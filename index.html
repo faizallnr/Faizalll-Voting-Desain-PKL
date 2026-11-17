@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voting Desain Baju PKL — Dosen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+            <span class="font-bold text-slate-900">Voting Desain Baju PKL</span>
+            <button onclick="openAdminModal()" class="text-xs font-medium text-slate-500 hover:text-slate-900 bg-slate-100 px-3 py-1.5 rounded-lg">
+                🔐 Login Admin
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-8">
+
+        <!-- STEP 1: NAMA DOSEN -->
+        <div id="section-name" class="max-w-md mx-auto mt-12 bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+            <h1 class="text-xl font-bold text-slate-900 mb-1">Silakan Masukkan Nama Dosen</h1>
+            <p class="text-xs text-slate-500 mb-6">Agar suara Anda tercatat di rekapitulasi penilaian.</p>
+            <form onsubmit="saveLecturerName(event)" class="space-y-4">
+                <input type="text" id="lecturer-input" required placeholder="Contoh: Dr. Ir. Budi, M.T."
+                    class="w-full px-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-2.5 rounded-xl transition">
+                    Mulai Menilai Desain
+                </button>
+            </form>
+        </div>
+
+        <!-- STEP 2: HALAMAN VOTING DOSEN -->
+        <div id="section-voting" class="hidden space-y-6">
+            <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900">Daftar Desain Baju PKL</h2>
+                    <p class="text-xs text-slate-500">Penilai Aktif: <strong id="display-lecturer-name" class="text-indigo-600"></strong></p>
+                </div>
+                <button onclick="changeLecturer()" class="text-xs text-slate-500 underline">Ganti Nama</button>
+            </div>
+
+            <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <!-- Foto dimuat otomatis dari data -->
+            </div>
+        </div>
+
+        <!-- STEP 3: HALAMAN ADMIN (REKAP) -->
+        <div id="section-admin" class="hidden space-y-6">
+            <div class="bg-slate-900 text-white p-6 rounded-2xl flex justify-between items-center">
+                <div>
+                    <span class="text-xs uppercase text-slate-400 tracking-wider">Dashboard Admin</span>
+                    <h2 class="text-xl font-bold">Rekap Suara Dosen</h2>
+                </div>
+                <button onclick="closeAdmin()" class="text-xs bg-slate-800 px-4 py-2 rounded-lg hover:bg-slate-700">Tutup Admin</button>
+            </div>
+
+            <!-- Form Upload Foto (Langsung File, Tanpa URL) -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="font-semibold text-sm mb-3">Upload Foto Desain Baru</h3>
+                <form onsubmit="addPhoto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Nama / Kode Desain</label>
+                        <input type="text" id="new-title" required placeholder="Nama Desain Gais" class="w-full px-3.5 py-2 text-sm border rounded-xl">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-700 mb-1">Pilih File Gambar</label>
+                        <input type="file" id="new-file" accept="image/*" required class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                    </div>
+                    <button type="submit" id="btn-upload-file" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm py-2.5 rounded-xl transition">
+                        + Upload Desain
+                    </button>
+                </form>
+            </div>
+
+            <!-- Tabel Rekap -->
+            <div id="admin-recap-list" class="space-y-4">
+                <!-- Rekap suara masuk di sini -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL PASSWORD ADMIN -->
+    <div id="admin-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
+            <h3 class="font-bold mb-3">Masukkan Password Admin</h3>
+            <input type="password" id="admin-pass-input" placeholder="Password..." class="w-full px-3 py-2 text-sm border rounded-xl mb-4">
+            <div class="flex gap-2">
+                <button onclick="verifyAdmin()" class="flex-1 bg-slate-900 text-white text-sm py-2 rounded-xl">Masuk</button>
+                <button onclick="document.getElementById('admin-modal').classList.add('hidden')" class="px-4 text-sm bg-slate-100 rounded-xl">Batal</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Masukkan Bin ID dan API Key dari akun jsonbin.io kamu di sini
+        const BIN_ID = "MASUKKAN_BIN_ID_DISINI"; 
+        const API_KEY = "MASUKKAN_MASTER_KEY_JSONBIN_DISINI";
+
+        let dbData = { photos: [], votes: {} };
+        let currentLecturer = localStorage.getItem('lecturerName') || '';
+
+        async function loadDataFromCloud() {
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const json = await res.json();
+                dbData = json.record || { photos: [], votes: {} };
+            } catch (e) {
+                console.log("Gagal memuat data online.");
+            }
+            refreshView();
+        }
+
+        async function saveDataToCloud() {
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': API_KEY
+                    },
+                    body: JSON.stringify(dbData)
+                });
+            } catch (e) {
+                alert("Gagal menyimpan ke server cloud!");
+            }
+        }
+
+        function refreshView() {
+            if (currentLecturer) {
+                document.getElementById('section-name').classList.add('hidden');
+                document.getElementById('section-voting').classList.remove('hidden');
+                document.getElementById('display-lecturer-name').innerText = currentLecturer;
+                renderVotingGallery();
+            } else {
+                document.getElementById('section-name').classList.remove('hidden');
+                document.getElementById('section-voting').classList.add('hidden');
+            }
+        }
+
+        function saveLecturerName(e) {
+            e.preventDefault();
+            const val = document.getElementById('lecturer-input').value.trim();
+            if (!val) return;
+            currentLecturer = val;
+            localStorage.setItem('lecturerName', val);
+            refreshView();
+        }
+
+        function changeLecturer() {
+            localStorage.removeItem('lecturerName');
+            currentLecturer = '';
+            refreshView();
+        }
+
+        function renderVotingGallery() {
+            const grid = document.getElementById('dosen-photos-grid');
+            if (dbData.photos.length === 0) {
+                grid.innerHTML = `<p class="text-sm text-slate-400 col-span-2 text-center py-8">Belum ada desain dari admin.</p>`;
+                return;
+            }
+
+            grid.innerHTML = dbData.photos.map(photo => {
+                const myScore = (dbData.votes[photo.id] && dbData.votes[photo.id][currentLecturer]) || 0;
+                
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                    const color = i <= myScore ? 'text-amber-500' : 'text-slate-300';
+                    stars += `<button onclick="votePhoto('${photo.id}', ${i})" class="text-2xl ${color}">★</button>`;
+                }
+
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm flex flex-col">
+                        <div class="h-52 bg-slate-50 flex items-center justify-center overflow-hidden border-b">
+                            <img src="${photo.url}" class="w-full h-full object-contain">
+                        </div>
+                        <div class="p-4 flex-grow flex flex-col justify-between">
+                            <h3 class="font-semibold text-slate-900 text-sm">${photo.title}</h3>
+                            <div class="flex items-center justify-between mt-3 pt-3 border-t">
+                                <div class="flex gap-1">${stars}</div>
+                                <span class="text-xs text-slate-500">${myScore ? `Nilai: ${myScore}/5` : 'Belum dinilai'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function votePhoto(photoId, score) {
+            if (!dbData.votes[photoId]) dbData.votes[photoId] = {};
+            dbData.votes[photoId][currentLecturer] = score;
+            await saveDataToCloud();
+            renderVotingGallery();
+        }
+
+        // --- ADMIN AREA ---
+        function openAdminModal() {
+            document.getElementById('admin-modal').classList.remove('hidden');
+        }
+
+        function verifyAdmin() {
+            const pass = document.getElementById('admin-pass-input').value;
+            if (pass === "admin123") { // Ganti password admin di sini jika mau
+                document.getElementById('admin-modal').classList.add('hidden');
+                document.getElementById('section-name').classList.add('hidden');
+                document.getElementById('section-voting').classList.add('hidden');
+                document.getElementById('section-admin').classList.remove('hidden');
+                renderAdminRecap();
+            } else {
+                alert("Password salah!");
+            }
+        }
+
+        function closeAdmin() {
+            document.getElementById('section-admin').classList.add('hidden');
+            refreshView();
+        }
+
+        // Kompresi otomatis gambar agar ukuran file pas untuk disimpan di database
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
+                        canvas.height = img.width > MAX_WIDTH ? img.height * scaleSize : img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                    };
+                };
+            });
+        }
+
+        async function addPhoto(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-upload-file');
+            const title = document.getElementById('new-title').value.trim();
+            const fileInput = document.getElementById('new-file');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            btn.disabled = true;
+            btn.innerText = 'Mengupload...';
+
+            try {
+                const compressedUrl = await compressImage(file);
+                dbData.photos.push({ id: 'p_' + Date.now(), title, url: compressedUrl });
+                await saveDataToCloud();
+                
+                e.target.reset();
+                renderAdminRecap();
+                alert("Desain berhasil diupload!");
+            } catch (err) {
+                alert("Gagal mengupload gambar.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = '+ Upload Desain';
+            }
+        }
+
+        function renderAdminRecap() {
+            const container = document.getElementById('admin-recap-list');
+            if (dbData.photos.length === 0) {
+                container.innerHTML = `<p class="bg-white p-6 rounded-xl text-sm text-slate-400 text-center">Belum ada foto desain yang diupload.</p>`;
+                return;
+            }
+
+            container.innerHTML = dbData.photos.map(photo => {
+                const votesObj = dbData.votes[photo.id] || {};
+                const voters = Object.entries(votesObj);
+                const totalScore = voters.reduce((acc, curr) => acc + curr[1], 0);
+                const avg = voters.length ? (totalScore / voters.length).toFixed(2) : '0.00';
+
+                const voterTags = voters.map(([name, score]) => `
+                    <span class="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md"><strong>${name}</strong>: ${score}★</span>
+                `).join('') || '<span class="text-xs text-slate-400 italic">Belum ada dosen yang menilai.</span>';
+
+                return `
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        <div class="flex gap-4 items-center">
+                            <img src="${photo.url}" class="w-16 h-16 rounded-xl object-cover border bg-slate-50 shrink-0">
+                            <div>
+                                <h4 class="font-bold text-slate-900">${photo.title}</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">Rata-rata: <strong class="text-indigo-600">${avg} / 5.00</strong> (${voters.length} Dosen menilai)</p>
+                                <div class="flex flex-wrap gap-1.5 mt-2">${voterTags}</div>
+                            </div>
+                        </div>
+                        <button onclick="deletePhoto('${photo.id}')" class="text-xs text-rose-600 hover:bg-rose-50 px-3 py-1.5 border border-rose-200 rounded-lg transition shrink-0">Hapus</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function deletePhoto(id) {
+            if (!confirm("Hapus desain ini beserta rekap nilainya?")) return;
+            dbData.photos = dbData.photos.filter(p => p.id !== id);
+            delete dbData.votes[id];
+            await saveDataToCloud();
+            renderAdminRecap();
+        }
+
+        // Load data saat halaman dibuka
+        loadDataFromCloud();
+    </script>
+</body>
+</html>
