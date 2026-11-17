@@ -58,7 +58,7 @@
 
             <p class="text-xs text-slate-400 italic">💡 Tips: Klik pada foto desain untuk memperbesar (zoom) gambar dan melihat detailnya.</p>
 
-            <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
+            <div id="penilai-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
             <!-- Tombol Kirim Melayang di Bawah -->
             <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-20">
@@ -275,7 +275,7 @@
         }
 
         function renderVotingGallery() {
-            const grid = document.getElementById('dosen-photos-grid');
+            const grid = document.getElementById('penilai-photos-grid');
             const labelEl = document.getElementById('selected-design-label');
             const submitBtn = document.getElementById('btn-submit-vote');
 
