@@ -42,7 +42,7 @@
             </form>
         </div>
 
-        <!-- STEP 2: HALAMAN VOTING (PILIH 1 DESAIN + TOMBOL KIRIM) -->
+        <!-- STEP 2: HALAMAN VOTING -->
         <div id="section-voting" class="hidden space-y-6 pb-24">
             <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200 pb-4">
                 <div>
@@ -52,17 +52,13 @@
                 <button onclick="changeLecturer()" class="text-xs text-slate-500 hover:text-slate-800 underline">Ganti Nama</button>
             </div>
 
-            <!-- Banner Status Sudah Vote -->
-            <div id="already-voted-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs flex items-center justify-between">
-                <span>✅ Pilihan Anda sudah tersimpan. Anda masih bisa mengganti pilihan di bawah lalu klik kirim ulang jika ingin mengubahnya.</span>
+            <div id="already-voted-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs">
+                ✅ Pilihan Anda sudah tersimpan. Anda masih bisa mengganti pilihan di bawah lalu klik kirim ulang jika ingin mengubahnya.
             </div>
 
-            <!-- Grid Kartu Desain -->
-            <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <!-- Foto dimuat otomatis dari data -->
-            </div>
+            <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
-            <!-- Tombol Kirim Melayang di Bawah (Sticky Bottom) -->
+            <!-- Tombol Kirim Melayang di Bawah -->
             <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-20">
                 <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
                     <div class="text-xs text-slate-600 truncate">
@@ -76,7 +72,7 @@
             </div>
         </div>
 
-        <!-- STEP 3: HALAMAN ADMIN (REKAP SUARA TERBANYAK) -->
+        <!-- STEP 3: HALAMAN ADMIN -->
         <div id="section-admin" class="hidden space-y-6">
             <div class="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl flex flex-wrap justify-between items-center gap-4">
                 <div>
@@ -92,7 +88,7 @@
 
             <!-- Form Upload Foto -->
             <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="font-semibold text-sm mb-3">Upload Foto Desain Baru</h3>
+                <h3 class="font-semibold text-sm mb-3">Upload Foto Desain Baru (Bebas Ukuran File)</h3>
                 <form onsubmit="addPhoto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Nama / Kode Desain</label>
@@ -108,12 +104,10 @@
                 </form>
             </div>
 
-            <!-- Tabel Rekap Urut Peringkat -->
+            <!-- Tabel Rekap -->
             <div class="space-y-3">
                 <h3 class="font-bold text-slate-900 text-sm">Hasil Perolehan Suara (Diurutkan dari Terbanyak)</h3>
-                <div id="admin-recap-list" class="space-y-4">
-                    <!-- Rekap suara masuk di sini -->
-                </div>
+                <div id="admin-recap-list" class="space-y-4"></div>
             </div>
         </div>
 
@@ -134,8 +128,12 @@
     <script>
         const BIN_ID = "6afc91f5ffd5d16053c91f49"; 
         const API_KEY = "$2a$10$lAy6lndd51zlkH7nOF3yquA7krnussWHtRiy0/wPEMo/aT2GYWwpS";
+        
+        // ============================================================
+        // TEMPEL API KEY DARI api.imgbb.com DI BAWAH INI:
+        // ============================================================
+        const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d";
 
-        // Struktur baru: photos = array objek desain, userVotes = { "Nama Dosen": "id_desain" }
         let dbData = { photos: [], userVotes: {} };
         let currentLecturer = localStorage.getItem('lecturerName') || '';
         let selectedPhotoId = null;
@@ -143,7 +141,6 @@
 
         async function loadDataFromCloud(showAlert = false) {
             try {
-                // Ditambah timestamp & cache: no-store agar HP/Mobile tidak nyangkut di cache lama
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
                     method: 'GET',
                     cache: 'no-store',
@@ -182,7 +179,7 @@
                 },
                 body: JSON.stringify(dbData)
             });
-            if (!res.ok) throw new Error("Gagal menyimpan ke server");
+            if (!res.ok) throw new Error("Kapasitas JSONBin penuh atau gagal menyimpan.");
         }
 
         function refreshView() {
@@ -191,7 +188,6 @@
                 document.getElementById('section-voting').classList.remove('hidden');
                 document.getElementById('display-lecturer-name').innerText = currentLecturer;
 
-                // Cek apakah dosen ini sebelumnya sudah pernah mengirim vote
                 const existingVote = dbData.userVotes[currentLecturer];
                 if (existingVote && dbData.photos.some(p => p.id === existingVote)) {
                     selectedPhotoId = existingVote;
@@ -285,7 +281,6 @@
             btn.innerText = 'Mengirim...';
 
             try {
-                // Ambil data terbaru dulu agar vote dosen lain yang masuk bersamaan tidak tertimpa
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
                     cache: 'no-store',
                     headers: { 'X-Master-Key': API_KEY }
@@ -296,7 +291,6 @@
                 dbData.photos = Array.isArray(latestRecord.photos) ? latestRecord.photos : dbData.photos;
                 dbData.userVotes = (latestRecord.userVotes && typeof latestRecord.userVotes === 'object') ? latestRecord.userVotes : {};
 
-                // Simpan pilihan 1 desain dari dosen ini
                 dbData.userVotes[currentLecturer] = selectedPhotoId;
                 await saveDataToCloud();
 
@@ -336,26 +330,23 @@
             refreshView();
         }
 
-        // Kompresi lebih ringan (MAX_WIDTH 650px, quality 0.65) agar cepat terbuka di jaringan seluler HP
-        function compressImage(file) {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = (event) => {
-                    const img = new Image();
-                    img.src = event.target.result;
-                    img.onload = () => {
-                        const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 650;
-                        const scaleSize = MAX_WIDTH / img.width;
-                        canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
-                        canvas.height = img.width > MAX_WIDTH ? img.height * scaleSize : img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                        resolve(canvas.toDataURL('image/jpeg', 0.65));
-                    };
-                };
+        // Upload langsung ke ImgBB (bebas ukuran besar hingga 32 MB per foto)
+        async function uploadToImgBB(file) {
+            if (!IMGBB_API_KEY || IMGBB_API_KEY === "MASUKKAN_API_KEY_IMGBB_DISINI") {
+                throw new Error("API Key ImgBB belum diisi di dalam kode!");
+            }
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: "POST",
+                body: formData
             });
+            const data = await res.json();
+            if (!data.success) {
+                throw new Error(data.error?.message || "Gagal upload gambar ke ImgBB.");
+            }
+            return data.data.url;
         }
 
         async function addPhoto(e) {
@@ -367,18 +358,21 @@
             if (!file) return;
 
             btn.disabled = true;
-            btn.innerText = 'Mengupload...';
+            btn.innerText = 'Mengupload gambar...';
 
             try {
-                const compressedUrl = await compressImage(file);
-                dbData.photos.push({ id: 'p_' + Date.now(), title, url: compressedUrl });
+                // 1. Upload file gambar ke ImgBB -> dapat URL ringan
+                const imageUrl = await uploadToImgBB(file);
+
+                // 2. Simpan hanya judul & URL-nya ke JSONBin
+                dbData.photos.push({ id: 'p_' + Date.now(), title, url: imageUrl });
                 await saveDataToCloud();
                 
                 e.target.reset();
                 renderAdminRecap();
                 alert("Desain berhasil diupload!");
             } catch (err) {
-                alert("Gagal mengupload gambar. Pastikan ukuran file tidak terlalu besar.");
+                alert("Error: " + err.message);
             } finally {
                 btn.disabled = false;
                 btn.innerText = '+ Upload Desain';
@@ -389,7 +383,6 @@
             const container = document.getElementById('admin-recap-list');
             const totalVotersEl = document.getElementById('admin-total-voters');
 
-            // Hitung total pemilih yang valid (memilih desain yang masih ada)
             const validPhotoIds = new Set(dbData.photos.map(p => p.id));
             const allEntries = Object.entries(dbData.userVotes).filter(([_, photoId]) => validPhotoIds.has(photoId));
             const totalVotesCount = allEntries.length;
@@ -401,7 +394,6 @@
                 return;
             }
 
-            // Hitung suara per desain & urutkan dari suara terbanyak
             const rankedPhotos = dbData.photos.map(photo => {
                 const voters = allEntries
                     .filter(([_, chosenId]) => chosenId === photo.id)
