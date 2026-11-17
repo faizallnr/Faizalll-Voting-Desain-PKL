@@ -56,6 +56,8 @@
                 ✅ Pilihan Anda sudah tersimpan. Anda masih bisa mengganti pilihan di bawah lalu klik kirim ulang jika ingin mengubahnya.
             </div>
 
+            <p class="text-xs text-slate-400 italic">💡 Tips: Klik pada foto desain untuk memperbesar (zoom) gambar dan melihat detailnya.</p>
+
             <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
             <!-- Tombol Kirim Melayang di Bawah -->
@@ -113,6 +115,25 @@
 
     </main>
 
+    <!-- MODAL ZOOM GAMBAR / DETAIL PREVIEW -->
+    <div id="zoom-modal" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center mb-3">
+                <h3 id="zoom-title" class="font-bold text-slate-900 text-base sm:text-lg">Detail Desain</h3>
+                <button onclick="closeZoomModal()" class="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-600 text-lg font-bold transition">&times;</button>
+            </div>
+            <div class="flex-grow bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center p-2 mb-4">
+                <img id="zoom-img-src" src="" alt="Zoom Preview" class="max-h-[50vh] w-auto object-contain">
+            </div>
+            <div class="flex items-center justify-between gap-4 pt-2 border-t border-slate-100">
+                <span id="zoom-status-text" class="text-xs font-medium text-slate-500">Status pilihan</span>
+                <button id="zoom-action-btn" onclick="" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm">
+                    Pilih Desain Ini
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL PASSWORD ADMIN -->
     <div id="admin-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl">
@@ -128,11 +149,7 @@
     <script>
         const BIN_ID = "6afc91f5ffd5d16053c91f49"; 
         const API_KEY = "$2a$10$lAy6lndd51zlkH7nOF3yquA7krnussWHtRiy0/wPEMo/aT2GYWwpS";
-        
-        // ============================================================
-        // TEMPEL API KEY DARI api.imgbb.com DI BAWAH INI:
-        // ============================================================
-        const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d";
+        const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d"; // API Key ImgBB kamu
 
         let dbData = { photos: [], userVotes: {} };
         let currentLecturer = localStorage.getItem('lecturerName') || '';
@@ -179,7 +196,7 @@
                 },
                 body: JSON.stringify(dbData)
             });
-            if (!res.ok) throw new Error("Kapasitas JSONBin penuh atau gagal menyimpan.");
+            if (!res.ok) throw new Error("Gagal menyimpan ke server.");
         }
 
         function refreshView() {
@@ -223,6 +240,38 @@
         function selectDesign(photoId) {
             selectedPhotoId = photoId;
             renderVotingGallery();
+            closeZoomModal();
+        }
+
+        // Fungsi membuka Pop-up Zoom Gambar
+        function openZoomModal(photoId) {
+            const photo = dbData.photos.find(p => p.id === photoId);
+            if (!photo) return;
+
+            document.getElementById('zoom-title').innerText = photo.title;
+            document.getElementById('zoom-img-src').src = photo.url;
+            
+            const isSelected = photo.id === selectedPhotoId;
+            const statusText = document.getElementById('zoom-status-text');
+            const actionBtn = document.getElementById('zoom-action-btn');
+
+            if (isSelected) {
+                statusText.innerText = "✓ Desain ini sedang Anda pilih";
+                actionBtn.innerText = "Batalkan Pilihan";
+                actionBtn.className = "bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm";
+                actionBtn.onclick = function() { selectDesign(null); };
+            } else {
+                statusText.innerText = "Belum dipilih";
+                actionBtn.innerText = "Pilih Desain Ini";
+                actionBtn.className = "bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm";
+                actionBtn.onclick = function() { selectDesign(photo.id); };
+            }
+
+            document.getElementById('zoom-modal').classList.remove('hidden');
+        }
+
+        function closeZoomModal() {
+            document.getElementById('zoom-modal').classList.add('hidden');
         }
 
         function renderVotingGallery() {
@@ -253,21 +302,23 @@
                     : 'border-slate-200 hover:border-slate-400 bg-white';
 
                 return `
-                    <div onclick="selectDesign('${photo.id}')" 
-                        class="cursor-pointer rounded-2xl border-2 overflow-hidden shadow-sm transition-all flex flex-col ${borderClass}">
-                        <div class="h-60 sm:h-64 bg-slate-100 flex items-center justify-center overflow-hidden border-b relative">
-                            <img src="${photo.url}" alt="${photo.title}" class="w-full h-full object-contain">
+                    <div class="rounded-2xl border-2 overflow-hidden shadow-sm transition-all flex flex-col ${borderClass}">
+                        <div onclick="openZoomModal('${photo.id}')" class="h-60 sm:h-64 bg-slate-100 flex items-center justify-center overflow-hidden border-b relative cursor-pointer group">
+                            <img src="${photo.url}" alt="${photo.title}" class="w-full h-full object-contain transition duration-300 group-hover:scale-105">
+                            <div class="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                <span class="bg-white/90 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">🔍 Klik untuk Zoom</span>
+                            </div>
                             ${isSelected ? `
                                 <span class="absolute top-3 right-3 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
                                     ✓ Dipilih
                                 </span>
                             ` : ''}
                         </div>
-                        <div class="p-4 flex items-center justify-between">
-                            <h3 class="font-bold text-slate-900 text-sm sm:text-base">${photo.title}</h3>
-                            <span class="text-xs font-medium px-3 py-1.5 rounded-lg ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'}">
-                                ${isSelected ? 'Terpilih' : 'Pilih Desain Ini'}
-                            </span>
+                        <div class="p-4 flex items-center justify-between gap-2">
+                            <h3 class="font-bold text-slate-900 text-sm sm:text-base truncate">${photo.title}</h3>
+                            <button onclick="selectDesign('${photo.id}')" class="text-xs font-medium px-3 py-1.5 rounded-lg transition shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                                ${isSelected ? 'Terpilih' : 'Pilih'}
+                            </button>
                         </div>
                     </div>
                 `;
@@ -330,11 +381,7 @@
             refreshView();
         }
 
-        // Upload langsung ke ImgBB (bebas ukuran besar hingga 32 MB per foto)
         async function uploadToImgBB(file) {
-            if (!IMGBB_API_KEY || IMGBB_API_KEY === "MASUKKAN_API_KEY_IMGBB_DISINI") {
-                throw new Error("API Key ImgBB belum diisi di dalam kode!");
-            }
             const formData = new FormData();
             formData.append("image", file);
 
@@ -361,10 +408,7 @@
             btn.innerText = 'Mengupload gambar...';
 
             try {
-                // 1. Upload file gambar ke ImgBB -> dapat URL ringan
                 const imageUrl = await uploadToImgBB(file);
-
-                // 2. Simpan hanya judul & URL-nya ke JSONBin
                 dbData.photos.push({ id: 'p_' + Date.now(), title, url: imageUrl });
                 await saveDataToCloud();
                 
