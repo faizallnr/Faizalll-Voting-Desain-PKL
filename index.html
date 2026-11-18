@@ -44,7 +44,7 @@
         </div>
 
         <!-- STEP 2: HALAMAN VOTING -->
-        <div id="section-voting" class="hidden space-y-6 pb-24">
+        <div id="section-voting" class="hidden space-y-6 pb-16">
             <div class="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200 pb-4">
                 <div>
                     <h2 class="text-lg sm:text-xl font-bold text-slate-900">Pilih 1 Desain Terbaik</h2>
@@ -54,24 +54,23 @@
             </div>
 
             <div id="already-voted-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs">
-                ✅ Pilihan Anda sudah tersimpan. Anda masih bisa mengganti pilihan di bawah lalu klik kirim ulang jika ingin mengubahnya.
+                ✅ Pilihan Anda sudah tersimpan otomatis di sistem. Anda masih bisa mengganti pilihan di bawah jika ingin mengubahnya.
             </div>
 
             <p class="text-xs text-slate-400 italic">💡 Tips: Klik pada foto desain untuk memperbesar (zoom) gambar dan melihat detailnya.</p>
 
             <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
-            <!-- Tombol Kirim Melayang di Bawah -->
-            <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-20">
-                <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
-                    <div class="text-xs text-slate-600 truncate">
-                        Pilihan Anda: <strong id="selected-design-label" class="text-slate-900">Belum memilih</strong>
-                    </div>
-                    <button id="btn-submit-vote" onclick="submitFinalVote()" disabled
-                        class="bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-2.5 rounded-xl transition shrink-0 shadow-sm">
-                        Kirim Voting
-                    </button>
+            <!-- Panel Status Pilihan & Kirim Voting (Menyatu di bawah galeri, tidak melayang/tertutup) -->
+            <div class="bg-white p-5 rounded-2xl border-2 border-indigo-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
+                <div>
+                    <p class="text-xs text-slate-500">Pilihan Aktif Anda:</p>
+                    <p id="selected-design-label" class="text-sm font-bold text-indigo-600 mt-0.5">Belum memilih</p>
                 </div>
+                <button id="btn-submit-vote" onclick="submitFinalVote(true)" disabled
+                    class="w-full sm:w-auto bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-3 rounded-xl transition shadow-sm shrink-0">
+                    Kirim Voting
+                </button>
             </div>
         </div>
 
@@ -112,6 +111,20 @@
                 <h3 class="font-bold text-slate-900 text-sm">Hasil Perolehan Suara (Diurutkan dari Terbanyak)</h3>
                 <div id="admin-recap-list" class="space-y-4"></div>
             </div>
+
+            <!-- Daftar Lengkap Penilai & Opsi Hapus -->
+            <div class="bg-white p-5 sm:p-6 rounded-2xl border-2 border-indigo-100 shadow-sm space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-sm">📋 Rekap Lengkap Penilai & Kontrol Hapus</h3>
+                        <p class="text-xs text-slate-500">Semua nama yang sudah mengisi muncul di sini. Klik hapus jika penilai ingin mengulang.</p>
+                    </div>
+                    <button onclick="clearAllVotes()" id="btn-clear-all-votes" class="hidden text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg border border-rose-200 transition">
+                        🗑️ Hapus Semua Suara
+                    </button>
+                </div>
+                <div id="admin-voters-list" class="divide-y divide-slate-100 border-t border-slate-100"></div>
+            </div>
         </div>
 
     </main>
@@ -147,6 +160,11 @@
         </div>
     </div>
 
+    <!-- TOAST NOTIFICATION (PENGGANTI ALERT) -->
+    <div id="toast-box" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-xs sm:text-sm font-medium px-5 py-3 rounded-full shadow-lg transition-all duration-300 text-center max-w-[90vw]">
+        Pesan notifikasi
+    </div>
+
     <script>
         const BIN_ID = "6afc91f5ffd5d16053c91f49"; 
         const API_KEY = "$2a$10$lAy6lndd51zlkH7nOF3yquA7krnussWHtRiy0/wPEMo/aT2GYWwpS";
@@ -156,6 +174,18 @@
         let currentLecturer = localStorage.getItem('lecturerName') || '';
         let selectedPhotoId = null;
         let isAdminOpen = false;
+        let toastTimeout = null;
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast-box');
+            toast.innerText = msg;
+            toast.className = `fixed top-20 left-1/2 -translate-x-1/2 z-50 text-white text-xs sm:text-sm font-medium px-5 py-3 rounded-full shadow-lg transition-all duration-300 text-center max-w-[90vw] ${isError ? 'bg-rose-600' : 'bg-slate-900'}`;
+            toast.classList.remove('hidden');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3500);
+        }
 
         // Membungkus URL gambar via proxy CDN global (wsrv.nl) agar lolos blokir semua operator seluler Indonesia
         function fixImageUrl(url) {
@@ -167,14 +197,15 @@
             return url;
         }
 
-        async function loadDataFromCloud(showAlert = false) {
+        async function loadDataFromCloud(showNotif = false) {
             try {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
                     method: 'GET',
                     cache: 'no-store',
                     headers: { 
                         'X-Master-Key': API_KEY,
-                        'Cache-Control': 'no-cache'
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache'
                     }
                 });
                 const json = await res.json();
@@ -185,9 +216,10 @@
                     userVotes: (record.userVotes && typeof record.userVotes === 'object') ? record.userVotes : {}
                 };
 
-                if (showAlert) alert("Data terbaru berhasil dimuat!");
+                if (showNotif) showToast("Data terbaru berhasil dimuat!");
             } catch (e) {
                 console.error("Gagal memuat data:", e);
+                if (showNotif) showToast("Gagal mengambil data terbaru.", true);
             } finally {
                 document.getElementById('loading-screen').classList.add('hidden');
                 if (isAdminOpen) {
@@ -252,6 +284,11 @@
             selectedPhotoId = photoId;
             renderVotingGallery();
             closeZoomModal();
+            
+            // Otomatis simpan ke cloud begitu dosen klik "Pilih" agar tidak hilang meski lupa klik tombol bawah
+            if (photoId && currentLecturer) {
+                submitFinalVote(false);
+            }
         }
 
         function openZoomModal(photoId) {
@@ -340,16 +377,19 @@
             }).join('');
         }
 
-        async function submitFinalVote() {
+        async function submitFinalVote(isManualClick = false) {
             if (!currentLecturer || !selectedPhotoId) return;
             const btn = document.getElementById('btn-submit-vote');
             btn.disabled = true;
-            btn.innerText = 'Mengirim...';
+            btn.innerText = 'Menyimpan...';
 
             try {
                 const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
                     cache: 'no-store',
-                    headers: { 'X-Master-Key': API_KEY }
+                    headers: { 
+                        'X-Master-Key': API_KEY,
+                        'Cache-Control': 'no-cache'
+                    }
                 });
                 const json = await res.json();
                 const latestRecord = json.record || {};
@@ -361,9 +401,13 @@
                 await saveDataToCloud();
 
                 document.getElementById('already-voted-banner').classList.remove('hidden');
-                alert(`Terima kasih ${currentLecturer}! Voting Anda berhasil dikirim dan masuk ke rekap admin.`);
+                if (isManualClick) {
+                    showToast(`Terima kasih ${currentLecturer}! Voting Anda sudah tercatat.`);
+                } else {
+                    showToast(`Pilihan tersimpan otomatis!`);
+                }
             } catch (err) {
-                alert("Gagal mengirim voting, silakan periksa koneksi internet dan coba lagi.");
+                showToast("Gagal menyimpan voting, periksa koneksi internet.", true);
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'Kirim Voting';
@@ -384,9 +428,9 @@
                 document.getElementById('section-name').classList.add('hidden');
                 document.getElementById('section-voting').classList.add('hidden');
                 document.getElementById('section-admin').classList.remove('hidden');
-                loadDataFromCloud();
+                loadDataFromCloud(true);
             } else {
-                alert("Password salah!");
+                showToast("Password admin salah!", true);
             }
         }
 
@@ -429,9 +473,9 @@
                 
                 e.target.reset();
                 renderAdminRecap();
-                alert("Desain berhasil diupload!");
+                showToast("Desain berhasil diupload!");
             } catch (err) {
-                alert("Error: " + err.message);
+                showToast("Error: " + err.message, true);
             } finally {
                 btn.disabled = false;
                 btn.innerText = '+ Upload Desain';
@@ -441,12 +485,41 @@
         function renderAdminRecap() {
             const container = document.getElementById('admin-recap-list');
             const totalVotersEl = document.getElementById('admin-total-voters');
+            const votersListContainer = document.getElementById('admin-voters-list');
+            const clearAllBtn = document.getElementById('btn-clear-all-votes');
 
-            const validPhotoIds = new Set(dbData.photos.map(p => p.id));
-            const allEntries = Object.entries(dbData.userVotes).filter(([_, photoId]) => validPhotoIds.has(photoId));
-            const totalVotesCount = allEntries.length;
+            const validPhotoMap = new Map(dbData.photos.map(p => [p.id, p.title]));
+            // Ambil SEMUA entri penilai dari database (termasuk jika ID desainnya sempat terhapus/berubah)
+            const rawEntries = Object.entries(dbData.userVotes || {});
+            const validEntries = rawEntries.filter(([_, photoId]) => validPhotoMap.has(photoId));
+            const totalVotesCount = validEntries.length;
 
-            totalVotersEl.innerText = `Total ${totalVotesCount} Penilai sudah mengirimkan suara`;
+            totalVotersEl.innerText = `Total ${rawEntries.length} Penilai tercatat (${totalVotesCount} suara sah)`;
+
+            // Render daftar lengkap seluruh penilai beserta tombol hapus
+            if (votersListContainer) {
+                if (rawEntries.length === 0) {
+                    if (clearAllBtn) clearAllBtn.classList.add('hidden');
+                    votersListContainer.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">Belum ada penilai yang mengirimkan suara di database saat ini.</p>`;
+                } else {
+                    if (clearAllBtn) clearAllBtn.classList.remove('hidden');
+                    votersListContainer.innerHTML = rawEntries.map(([lecturerName, chosenId], idx) => {
+                        const chosenTitle = validPhotoMap.get(chosenId) || 'Desain Lama (Sudah Dihapus)';
+                        const encodedName = encodeURIComponent(lecturerName);
+                        return `
+                            <div class="py-3.5 flex items-center justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-slate-900 truncate">${idx + 1}. ${lecturerName}</p>
+                                    <p class="text-xs text-slate-500 mt-0.5">Pilihan: <span class="font-semibold ${validPhotoMap.has(chosenId) ? 'text-indigo-600' : 'text-amber-600'}">${chosenTitle}</span></p>
+                                </div>
+                                <button onclick="deleteVoter('${encodedName}')" class="text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 border border-rose-200 rounded-lg transition shrink-0">
+                                    Hapus Penilai
+                                </button>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
 
             if (dbData.photos.length === 0) {
                 container.innerHTML = `<p class="bg-white p-6 rounded-xl text-sm text-slate-400 text-center border">Belum ada foto desain yang diupload.</p>`;
@@ -454,7 +527,7 @@
             }
 
             const rankedPhotos = dbData.photos.map(photo => {
-                const voters = allEntries
+                const voters = validEntries
                     .filter(([_, chosenId]) => chosenId === photo.id)
                     .map(([lecturerName]) => lecturerName);
                 return {
@@ -508,11 +581,52 @@
             }).join('');
         }
 
+        async function deleteVoter(encodedLecturerName) {
+            const lecturerName = decodeURIComponent(encodedLecturerName);
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const json = await res.json();
+                const latestRecord = json.record || {};
+                
+                dbData.photos = Array.isArray(latestRecord.photos) ? latestRecord.photos : dbData.photos;
+                dbData.userVotes = (latestRecord.userVotes && typeof latestRecord.userVotes === 'object') ? latestRecord.userVotes : {};
+
+                delete dbData.userVotes[lecturerName];
+                await saveDataToCloud();
+                renderAdminRecap();
+                showToast(`Data penilai "${lecturerName}" berhasil dihapus.`);
+            } catch (err) {
+                showToast("Gagal menghapus data penilai.", true);
+            }
+        }
+
+        async function clearAllVotes() {
+            try {
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 'X-Master-Key': API_KEY }
+                });
+                const json = await res.json();
+                const latestRecord = json.record || {};
+                
+                dbData.photos = Array.isArray(latestRecord.photos) ? latestRecord.photos : dbData.photos;
+                dbData.userVotes = {};
+                await saveDataToCloud();
+                renderAdminRecap();
+                showToast("Semua data suara penilai berhasil dikosongkan.");
+            } catch (err) {
+                showToast("Gagal menghapus semua suara.", true);
+            }
+        }
+
         async function deletePhoto(id) {
-            if (!confirm("Hapus desain ini?")) return;
             dbData.photos = dbData.photos.filter(p => p.id !== id);
             await saveDataToCloud();
             renderAdminRecap();
+            showToast("Desain berhasil dihapus.");
         }
 
         loadDataFromCloud();
