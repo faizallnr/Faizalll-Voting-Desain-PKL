@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>Voting Desain Baju PKL 2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -34,7 +35,7 @@
             <h1 class="text-xl font-bold text-slate-900 mb-1">Nama Penilai</h1>
             <p class="text-xs text-slate-500 mb-6">Isi Nama Beserta Gelar Nggih.</p>
             <form onsubmit="saveLecturerName(event)" class="space-y-4">
-                <input type="text" id="lecturer-input" required placeholder="Contoh: Faizal Nurcahyadi"
+                <input type="text" id="lecturer-input" required placeholder="Contoh: Dr. Muhammad Arif Rakhman"
                     class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900">
                 <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-3 rounded-xl transition">
                     Mulai Menilai Desain Kaos PKL 2026
@@ -58,7 +59,7 @@
 
             <p class="text-xs text-slate-400 italic">💡 Tips: Klik pada foto desain untuk memperbesar (zoom) gambar dan melihat detailnya.</p>
 
-            <div id="penilai-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
+            <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
             <!-- Tombol Kirim Melayang di Bawah -->
             <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 p-4 z-20">
@@ -90,11 +91,11 @@
 
             <!-- Form Upload Foto -->
             <div class="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <h3 class="font-semibold text-sm mb-3">Upload Foto Desain Baru (Bebas Ukuran File)</h3>
+                <h3 class="font-semibold text-sm mb-3">Upload Foto Desain Baru</h3>
                 <form onsubmit="addPhoto(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Nama / Kode Desain</label>
-                        <input type="text" id="new-title" required placeholder="Contoh: Desain 01" class="w-full px-3.5 py-2 text-sm border rounded-xl">
+                        <input type="text" id="new-title" required placeholder="Contoh: Desain 1" class="w-full px-3.5 py-2 text-sm border rounded-xl">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-700 mb-1">Pilih File Gambar</label>
@@ -123,7 +124,7 @@
                 <button onclick="closeZoomModal()" class="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-full flex items-center justify-center text-slate-600 text-lg font-bold transition">&times;</button>
             </div>
             <div class="flex-grow bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center p-2 mb-4">
-                <img id="zoom-img-src" src="" alt="Zoom Preview" class="max-h-[50vh] w-auto object-contain">
+                <img id="zoom-img-src" referrerpolicy="no-referrer" src="" alt="Zoom Preview" class="max-h-[50vh] w-auto object-contain">
             </div>
             <div class="flex items-center justify-between gap-4 pt-2 border-t border-slate-100">
                 <span id="zoom-status-text" class="text-xs font-medium text-slate-500">Status pilihan</span>
@@ -149,12 +150,22 @@
     <script>
         const BIN_ID = "6afc91f5ffd5d16053c91f49"; 
         const API_KEY = "$2a$10$lAy6lndd51zlkH7nOF3yquA7krnussWHtRiy0/wPEMo/aT2GYWwpS";
-        const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d"; // API Key ImgBB kamu
+        const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d";
 
         let dbData = { photos: [], userVotes: {} };
         let currentLecturer = localStorage.getItem('lecturerName') || '';
         let selectedPhotoId = null;
         let isAdminOpen = false;
+
+        // Membungkus URL gambar via proxy CDN global (wsrv.nl) agar lolos blokir semua operator seluler Indonesia
+        function fixImageUrl(url) {
+            if (!url) return '';
+            if (url.includes('ibb.co')) {
+                const cleanUrl = url.replace('https://i.ibb.co.com/', 'https://i.ibb.co/');
+                return `https://wsrv.nl/?url=${encodeURIComponent(cleanUrl)}&w=900&output=webp`;
+            }
+            return url;
+        }
 
         async function loadDataFromCloud(showAlert = false) {
             try {
@@ -243,13 +254,16 @@
             closeZoomModal();
         }
 
-        // Fungsi membuka Pop-up Zoom Gambar
         function openZoomModal(photoId) {
             const photo = dbData.photos.find(p => p.id === photoId);
             if (!photo) return;
 
             document.getElementById('zoom-title').innerText = photo.title;
-            document.getElementById('zoom-img-src').src = photo.url;
+            const zoomImg = document.getElementById('zoom-img-src');
+            zoomImg.src = fixImageUrl(photo.url);
+            zoomImg.onerror = function() {
+                if (this.src !== photo.url) this.src = photo.url;
+            };
             
             const isSelected = photo.id === selectedPhotoId;
             const statusText = document.getElementById('zoom-status-text');
@@ -275,7 +289,7 @@
         }
 
         function renderVotingGallery() {
-            const grid = document.getElementById('penilai-photos-grid');
+            const grid = document.getElementById('dosen-photos-grid');
             const labelEl = document.getElementById('selected-design-label');
             const submitBtn = document.getElementById('btn-submit-vote');
 
@@ -297,6 +311,7 @@
 
             grid.innerHTML = dbData.photos.map(photo => {
                 const isSelected = photo.id === selectedPhotoId;
+                const safeUrl = fixImageUrl(photo.url);
                 const borderClass = isSelected 
                     ? 'border-indigo-600 ring-2 ring-indigo-600 bg-indigo-50/20' 
                     : 'border-slate-200 hover:border-slate-400 bg-white';
@@ -304,7 +319,7 @@
                 return `
                     <div class="rounded-2xl border-2 overflow-hidden shadow-sm transition-all flex flex-col ${borderClass}">
                         <div onclick="openZoomModal('${photo.id}')" class="h-60 sm:h-64 bg-slate-100 flex items-center justify-center overflow-hidden border-b relative cursor-pointer group">
-                            <img src="${photo.url}" alt="${photo.title}" class="w-full h-full object-contain transition duration-300 group-hover:scale-105">
+                            <img src="${safeUrl}" onerror="if(this.src !== '${photo.url}') this.src='${photo.url}';" referrerpolicy="no-referrer" alt="${photo.title}" class="w-full h-full object-contain transition duration-300 group-hover:scale-105">
                             <div class="absolute inset-0 bg-slate-900/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                                 <span class="bg-white/90 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">🔍 Klik untuk Zoom</span>
                             </div>
@@ -452,6 +467,7 @@
             container.innerHTML = rankedPhotos.map((photo, index) => {
                 const percentage = totalVotesCount > 0 ? Math.round((photo.voteCount / totalVotesCount) * 100) : 0;
                 const isWinner = index === 0 && photo.voteCount > 0;
+                const safeUrl = fixImageUrl(photo.url);
 
                 const voterBadges = photo.voters.map(name => `
                     <span class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-md font-medium">
@@ -462,7 +478,7 @@
                 return `
                     <div class="bg-white p-5 rounded-2xl border ${isWinner ? 'border-amber-400 ring-1 ring-amber-400' : 'border-slate-200'} flex flex-col sm:flex-row gap-4 items-start justify-between">
                         <div class="flex gap-4 items-start w-full">
-                            <img src="${photo.url}" class="w-20 h-20 rounded-xl object-cover border bg-slate-50 shrink-0">
+                            <img src="${safeUrl}" onerror="if(this.src !== '${photo.url}') this.src='${photo.url}';" referrerpolicy="no-referrer" class="w-20 h-20 rounded-xl object-cover border bg-slate-50 shrink-0">
                             <div class="flex-grow">
                                 <div class="flex flex-wrap items-center gap-2">
                                     <span class="text-xs font-bold px-2 py-0.5 rounded ${isWinner ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">
