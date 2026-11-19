@@ -22,22 +22,22 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-grow max-w-4xl w-full mx-auto px-4 py-6 sm:py-8">
-
-        <!-- LOADING INDICATOR -->
-        <div id="loading-screen" class="text-center py-20">
-            <div class="inline-block w-8 h-8 border-4 border-slate-300 border-t-slate-900 rounded-full animate-spin"></div>
-            <p class="text-xs text-slate-500 mt-3">Memuat daftar desain...</p>
-        </div>
-
-        <!-- STEP 1: NAMA PENILAI -->
+        <!-- STEP 1: NAMA & NIM PENILAI -->
         <div id="section-name" class="hidden max-w-md mx-auto mt-8 sm:mt-12 bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200">
-            <h1 class="text-xl font-bold text-slate-900 mb-1">Nama Penilai</h1>
-            <p class="text-xs text-slate-500 mb-6">Isi Nama Beserta Gelar Nggih.</p>
-            <form onsubmit="saveLecturerName(event)" class="space-y-4">
-                <input type="text" id="lecturer-input" required placeholder="Contoh: Faizal Murcahyadi"
-                    class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900">
-                <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-3 rounded-xl transition">
+            <h1 class="text-xl font-bold text-slate-900 mb-1">Identitas Mahasiswa</h1>
+            <p class="text-xs text-slate-500 mb-6">Isi Nama Lengkap dan NIM Anda. Setiap NIM hanya dapat melakukan voting 1 kali.</p>
+            <form onsubmit="saveVoterIdentity(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">Nama Lengkap</label>
+                    <input type="text" id="voter-name-input" required placeholder="Contoh: Faizal Nurcahyadi"
+                        class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-700 mb-1">NIM</label>
+                    <input type="text" id="voter-nim-input" required placeholder="Contoh: A11.2022.12345"
+                        class="w-full px-4 py-3 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                </div>
+                <button type="submit" id="btn-start-vote" class="w-full bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium py-3 rounded-xl transition">
                     Mulai Menilai Desain Kaos PKL 2026
                 </button>
             </form>
@@ -50,24 +50,24 @@
                     <h2 class="text-lg sm:text-xl font-bold text-slate-900">Pilih 1 Desain Terbaik</h2>
                     <p class="text-xs text-slate-500 mt-0.5">Penilai: <strong id="display-lecturer-name" class="text-indigo-600"></strong></p>
                 </div>
-                <button onclick="changeLecturer()" class="text-xs text-slate-500 hover:text-slate-800 underline">Ganti Nama</button>
+                <button onclick="changeLecturer()" class="text-xs text-slate-500 hover:text-slate-800 underline">Ganti Akun / NIM</button>
             </div>
 
-            <div id="already-voted-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs">
-                ✅ Pilihan Anda sudah tersimpan otomatis di sistem. Anda masih bisa mengganti pilihan di bawah jika ingin mengubahnya.
+            <div id="already-voted-banner" class="hidden bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3.5 rounded-xl text-xs font-medium">
+                🔒 Voting Anda untuk NIM ini sudah terkunci dan tercatat di sistem. Pilihan tidak dapat diubah lagi.
             </div>
 
             <p class="text-xs text-slate-400 italic">💡 Tips: Klik pada foto desain untuk memperbesar (zoom) gambar dan melihat detailnya.</p>
 
             <div id="dosen-photos-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6"></div>
 
-            <!-- Panel Status Pilihan & Kirim Voting (Menyatu di bawah galeri, tidak melayang/tertutup) -->
+            <!-- Panel Status Pilihan & Kirim Voting -->
             <div class="bg-white p-5 rounded-2xl border-2 border-indigo-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-8">
                 <div>
                     <p class="text-xs text-slate-500">Pilihan Aktif Anda:</p>
                     <p id="selected-design-label" class="text-sm font-bold text-indigo-600 mt-0.5">Belum memilih</p>
                 </div>
-                <button id="btn-submit-vote" onclick="submitFinalVote(true)" disabled
+                <button id="btn-submit-vote" onclick="submitFinalVote()" disabled
                     class="w-full sm:w-auto bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed hover:bg-indigo-700 text-white text-sm font-semibold px-6 py-3 rounded-xl transition shadow-sm shrink-0">
                     Kirim Voting
                 </button>
@@ -171,10 +171,33 @@
         const IMGBB_API_KEY = "79f1ce1a0c0d3431cae021528eac5c2d";
 
         let dbData = { photos: [], userVotes: {} };
-        let currentLecturer = localStorage.getItem('lecturerName') || '';
+        let currentVoterName = localStorage.getItem('voterName') || '';
+        let currentVoterNim = localStorage.getItem('voterNim') || '';
         let selectedPhotoId = null;
+        let hasSubmittedVote = false;
         let isAdminOpen = false;
         let toastTimeout = null;
+
+        // Normalisasi NIM sebagai Primary Key agar tidak bisa diakali dengan spasi atau huruf besar/kecil
+        function normalizeNim(nim) {
+            return String(nim || '').trim().toUpperCase().replace(/\s+/g, '');
+        }
+
+        // Helper membaca data suara (mendukung format baru {name, photoId} maupun data dosen lama)
+        function parseVoteRecord(key, value) {
+            if (value && typeof value === 'object' && value.photoId) {
+                return {
+                    key: key,
+                    displayLabel: `${value.name} (${key})`,
+                    photoId: value.photoId
+                };
+            }
+            return {
+                key: key,
+                displayLabel: key,
+                photoId: value
+            };
+        }
 
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toast-box');
@@ -184,7 +207,7 @@
             if (toastTimeout) clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => {
                 toast.classList.add('hidden');
-            }, 3500);
+            }, 4000);
         }
 
         // Membungkus URL gambar via proxy CDN global (wsrv.nl) agar lolos blokir semua operator seluler Indonesia
@@ -243,17 +266,20 @@
         }
 
         function refreshView() {
-            if (currentLecturer) {
+            const normNim = normalizeNim(currentVoterNim);
+            if (currentVoterName && normNim) {
                 document.getElementById('section-name').classList.add('hidden');
                 document.getElementById('section-voting').classList.remove('hidden');
-                document.getElementById('display-lecturer-name').innerText = currentLecturer;
+                document.getElementById('display-lecturer-name').innerText = `${currentVoterName} (${normNim})`;
 
-                const existingVote = dbData.userVotes[currentLecturer];
-                if (existingVote && dbData.photos.some(p => p.id === existingVote)) {
-                    selectedPhotoId = existingVote;
+                const existingVote = dbData.userVotes[normNim];
+                if (existingVote) {
+                    const parsed = parseVoteRecord(normNim, existingVote);
+                    selectedPhotoId = parsed.photoId;
+                    hasSubmittedVote = true;
                     document.getElementById('already-voted-banner').classList.remove('hidden');
                 } else {
-                    selectedPhotoId = null;
+                    hasSubmittedVote = false;
                     document.getElementById('already-voted-banner').classList.add('hidden');
                 }
 
@@ -264,31 +290,72 @@
             }
         }
 
-        function saveLecturerName(e) {
+        async function saveVoterIdentity(e) {
             e.preventDefault();
-            const val = document.getElementById('lecturer-input').value.trim();
-            if (!val) return;
-            currentLecturer = val;
-            localStorage.setItem('lecturerName', val);
-            refreshView();
+            const nameVal = document.getElementById('voter-name-input').value.trim();
+            const rawNim = document.getElementById('voter-nim-input').value.trim();
+            const normNim = normalizeNim(rawNim);
+            if (!nameVal || !normNim) return;
+
+            const btn = document.getElementById('btn-start-vote');
+            btn.disabled = true;
+            btn.innerText = 'Memeriksa NIM...';
+
+            try {
+                // Tarik data terbaru dari server untuk cek apakah NIM sudah pernah voting
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest?t=${Date.now()}`, {
+                    cache: 'no-store',
+                    headers: { 
+                        'X-Master-Key': API_KEY,
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+                const json = await res.json();
+                const latestRecord = json.record || {};
+                dbData.photos = Array.isArray(latestRecord.photos) ? latestRecord.photos : dbData.photos;
+                dbData.userVotes = (latestRecord.userVotes && typeof latestRecord.userVotes === 'object') ? latestRecord.userVotes : {};
+
+                if (dbData.userVotes[normNim]) {
+                    const existing = parseVoteRecord(normNim, dbData.userVotes[normNim]);
+                    showToast(`⚠️ Ditolak! NIM ${normNim} (${existing.displayLabel}) sudah pernah mengisi voting dan tidak dapat mengisi lagi.`, true);
+                    return;
+                }
+
+                currentVoterName = nameVal;
+                currentVoterNim = normNim;
+                selectedPhotoId = null;
+                hasSubmittedVote = false;
+                localStorage.setItem('voterName', nameVal);
+                localStorage.setItem('voterNim', normNim);
+                refreshView();
+            } catch (err) {
+                showToast("Gagal memeriksa data ke server. Periksa koneksi internet.", true);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Mulai Menilai Desain Kaos PKL 2026';
+            }
         }
 
         function changeLecturer() {
-            localStorage.removeItem('lecturerName');
-            currentLecturer = '';
+            localStorage.removeItem('voterName');
+            localStorage.removeItem('voterNim');
+            currentVoterName = '';
+            currentVoterNim = '';
             selectedPhotoId = null;
+            hasSubmittedVote = false;
             refreshView();
         }
 
         function selectDesign(photoId) {
+            if (hasSubmittedVote) {
+                showToast("Anda sudah mengirim voting. Pilihan tidak dapat diubah lagi.", true);
+                closeZoomModal();
+                return;
+            }
+            // Hanya mengubah pilihan sementara di layar; tersimpan permanen saat klik "Kirim Voting"
             selectedPhotoId = photoId;
             renderVotingGallery();
             closeZoomModal();
-            
-            // Otomatis simpan ke cloud begitu dosen klik "Pilih" agar tidak hilang meski lupa klik tombol bawah
-            if (photoId && currentLecturer) {
-                submitFinalVote(false);
-            }
         }
 
         function openZoomModal(photoId) {
@@ -306,7 +373,12 @@
             const statusText = document.getElementById('zoom-status-text');
             const actionBtn = document.getElementById('zoom-action-btn');
 
-            if (isSelected) {
+            if (hasSubmittedVote) {
+                statusText.innerText = isSelected ? "🔒 Pilihan final Anda" : "🔒 Voting sudah terkunci";
+                actionBtn.innerText = "Tutup Preview";
+                actionBtn.className = "bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm";
+                actionBtn.onclick = function() { closeZoomModal(); };
+            } else if (isSelected) {
                 statusText.innerText = "✓ Desain ini sedang Anda pilih";
                 actionBtn.innerText = "Batalkan Pilihan";
                 actionBtn.className = "bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm";
@@ -338,12 +410,18 @@
             }
 
             const selectedPhoto = dbData.photos.find(p => p.id === selectedPhotoId);
-            if (selectedPhoto) {
+            if (hasSubmittedVote) {
+                labelEl.innerText = selectedPhoto ? `${selectedPhoto.title} (Terkunci)` : "Terkunci";
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Voting Sudah Terkirim";
+            } else if (selectedPhoto) {
                 labelEl.innerText = selectedPhoto.title;
                 submitBtn.disabled = false;
+                submitBtn.innerText = "Kirim Voting";
             } else {
                 labelEl.innerText = "Belum memilih";
                 submitBtn.disabled = true;
+                submitBtn.innerText = "Kirim Voting";
             }
 
             grid.innerHTML = dbData.photos.map(photo => {
@@ -353,6 +431,21 @@
                     ? 'border-indigo-600 ring-2 ring-indigo-600 bg-indigo-50/20' 
                     : 'border-slate-200 hover:border-slate-400 bg-white';
 
+                let actionButtonHtml = '';
+                if (hasSubmittedVote) {
+                    actionButtonHtml = `
+                        <span class="text-xs font-medium px-3 py-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-400'}">
+                            ${isSelected ? '🔒 Pilihan Anda' : 'Terkunci'}
+                        </span>
+                    `;
+                } else {
+                    actionButtonHtml = `
+                        <button onclick="selectDesign('${photo.id}')" class="text-xs font-medium px-3 py-1.5 rounded-lg transition shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
+                            ${isSelected ? 'Terpilih' : 'Pilih'}
+                        </button>
+                    `;
+                }
+
                 return `
                     <div class="rounded-2xl border-2 overflow-hidden shadow-sm transition-all flex flex-col ${borderClass}">
                         <div onclick="openZoomModal('${photo.id}')" class="h-60 sm:h-64 bg-slate-100 flex items-center justify-center overflow-hidden border-b relative cursor-pointer group">
@@ -361,24 +454,24 @@
                                 <span class="bg-white/90 text-slate-900 text-xs font-bold px-3 py-1.5 rounded-full shadow">🔍 Klik untuk Zoom</span>
                             </div>
                             ${isSelected ? `
-                                <span class="absolute top-3 right-3 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow">
-                                    ✓ Dipilih
+                                <span class="absolute top-3 right-3 ${hasSubmittedVote ? 'bg-emerald-600' : 'bg-indigo-600'} text-white text-xs font-bold px-3 py-1 rounded-full shadow">
+                                    ${hasSubmittedVote ? '🔒 Terkunci' : '✓ Dipilih'}
                                 </span>
                             ` : ''}
                         </div>
                         <div class="p-4 flex items-center justify-between gap-2">
                             <h3 class="font-bold text-slate-900 text-sm sm:text-base truncate">${photo.title}</h3>
-                            <button onclick="selectDesign('${photo.id}')" class="text-xs font-medium px-3 py-1.5 rounded-lg transition shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}">
-                                ${isSelected ? 'Terpilih' : 'Pilih'}
-                            </button>
+                            ${actionButtonHtml}
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        async function submitFinalVote(isManualClick = false) {
-            if (!currentLecturer || !selectedPhotoId) return;
+        async function submitFinalVote() {
+            const normNim = normalizeNim(currentVoterNim);
+            if (!currentVoterName || !normNim || !selectedPhotoId || hasSubmittedVote) return;
+
             const btn = document.getElementById('btn-submit-vote');
             btn.disabled = true;
             btn.innerText = 'Menyimpan...';
@@ -397,18 +490,29 @@
                 dbData.photos = Array.isArray(latestRecord.photos) ? latestRecord.photos : dbData.photos;
                 dbData.userVotes = (latestRecord.userVotes && typeof latestRecord.userVotes === 'object') ? latestRecord.userVotes : {};
 
-                dbData.userVotes[currentLecturer] = selectedPhotoId;
+                // Validasi ganda di sisi server sebelum menyimpan: tolak jika NIM sudah terdaftar
+                if (dbData.userVotes[normNim]) {
+                    hasSubmittedVote = true;
+                    const existing = parseVoteRecord(normNim, dbData.userVotes[normNim]);
+                    selectedPhotoId = existing.photoId;
+                    refreshView();
+                    showToast(`⚠️ NIM ${normNim} sudah pernah mengisi voting sebelumnya dan tidak bisa mengisi lagi!`, true);
+                    return;
+                }
+
+                // Simpan permanen dengan NIM sebagai Primary Key
+                dbData.userVotes[normNim] = {
+                    name: currentVoterName,
+                    photoId: selectedPhotoId,
+                    submittedAt: new Date().toISOString()
+                };
                 await saveDataToCloud();
 
-                document.getElementById('already-voted-banner').classList.remove('hidden');
-                if (isManualClick) {
-                    showToast(`Terima kasih ${currentLecturer}! Voting Anda sudah tercatat.`);
-                } else {
-                    showToast(`Pilihan tersimpan otomatis!`);
-                }
+                hasSubmittedVote = true;
+                refreshView();
+                showToast(`Terima kasih ${currentVoterName} (${normNim})! Voting Anda berhasil dikirim dan dikunci.`);
             } catch (err) {
                 showToast("Gagal menyimpan voting, periksa koneksi internet.", true);
-            } finally {
                 btn.disabled = false;
                 btn.innerText = 'Kirim Voting';
             }
@@ -489,30 +593,29 @@
             const clearAllBtn = document.getElementById('btn-clear-all-votes');
 
             const validPhotoMap = new Map(dbData.photos.map(p => [p.id, p.title]));
-            // Ambil SEMUA entri penilai dari database (termasuk jika ID desainnya sempat terhapus/berubah)
-            const rawEntries = Object.entries(dbData.userVotes || {});
-            const validEntries = rawEntries.filter(([_, photoId]) => validPhotoMap.has(photoId));
+            const parsedEntries = Object.entries(dbData.userVotes || {}).map(([key, val]) => parseVoteRecord(key, val));
+            const validEntries = parsedEntries.filter(item => validPhotoMap.has(item.photoId));
             const totalVotesCount = validEntries.length;
 
-            totalVotersEl.innerText = `Total ${rawEntries.length} Penilai tercatat (${totalVotesCount} suara sah)`;
+            totalVotersEl.innerText = `Total ${parsedEntries.length} Penilai tercatat (${totalVotesCount} suara sah)`;
 
-            // Render daftar lengkap seluruh penilai beserta tombol hapus
+            // Render daftar lengkap seluruh penilai (Nama & NIM) beserta tombol hapus
             if (votersListContainer) {
-                if (rawEntries.length === 0) {
+                if (parsedEntries.length === 0) {
                     if (clearAllBtn) clearAllBtn.classList.add('hidden');
                     votersListContainer.innerHTML = `<p class="text-xs text-slate-400 italic py-4 text-center">Belum ada penilai yang mengirimkan suara di database saat ini.</p>`;
                 } else {
                     if (clearAllBtn) clearAllBtn.classList.remove('hidden');
-                    votersListContainer.innerHTML = rawEntries.map(([lecturerName, chosenId], idx) => {
-                        const chosenTitle = validPhotoMap.get(chosenId) || 'Desain Lama (Sudah Dihapus)';
-                        const encodedName = encodeURIComponent(lecturerName);
+                    votersListContainer.innerHTML = parsedEntries.map((item, idx) => {
+                        const chosenTitle = validPhotoMap.get(item.photoId) || 'Desain Lama (Sudah Dihapus)';
+                        const encodedKey = encodeURIComponent(item.key);
                         return `
                             <div class="py-3.5 flex items-center justify-between gap-3">
                                 <div class="min-w-0">
-                                    <p class="text-sm font-bold text-slate-900 truncate">${idx + 1}. ${lecturerName}</p>
-                                    <p class="text-xs text-slate-500 mt-0.5">Pilihan: <span class="font-semibold ${validPhotoMap.has(chosenId) ? 'text-indigo-600' : 'text-amber-600'}">${chosenTitle}</span></p>
+                                    <p class="text-sm font-bold text-slate-900 truncate">${idx + 1}. ${item.displayLabel}</p>
+                                    <p class="text-xs text-slate-500 mt-0.5">Pilihan: <span class="font-semibold ${validPhotoMap.has(item.photoId) ? 'text-indigo-600' : 'text-amber-600'}">${chosenTitle}</span></p>
                                 </div>
-                                <button onclick="deleteVoter('${encodedName}')" class="text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 border border-rose-200 rounded-lg transition shrink-0">
+                                <button onclick="deleteVoter('${encodedKey}')" class="text-xs font-medium text-rose-600 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 border border-rose-200 rounded-lg transition shrink-0">
                                     Hapus Penilai
                                 </button>
                             </div>
@@ -528,8 +631,8 @@
 
             const rankedPhotos = dbData.photos.map(photo => {
                 const voters = validEntries
-                    .filter(([_, chosenId]) => chosenId === photo.id)
-                    .map(([lecturerName]) => lecturerName);
+                    .filter(item => item.photoId === photo.id)
+                    .map(item => item.displayLabel);
                 return {
                     ...photo,
                     voteCount: voters.length,
